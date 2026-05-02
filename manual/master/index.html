@@ -1458,7 +1458,7 @@ which is the main difference to using <tt class="docutils literal"><span class="
 [builtin-pseudo-gui]
 terminal=no
 force-window=yes
-idle=once
+idle=yes
 screenshot-directory=~~desktop/
 </pre>
 <p>The <tt class="docutils literal"><span class="pre">pseudo-gui</span></tt> profile exists for compatibility. The options in the
@@ -1584,6 +1584,23 @@ setting the ytdl_format to &quot;bestaudio/best&quot; in the ytdl_hook.lua scrip
 Specify the edition (set of chapters) to use, where 0 is the first. If set
 to <tt class="docutils literal">auto</tt> (the default), mpv will choose the first edition declared as a
 default, or if there is no default, the first edition defined.</dd>
+<dt><tt class="docutils literal"><span class="pre">--flatten-editions=&lt;yes|no&gt;</span></tt></dt>
+<dd><p class="first">Some container formats (such as HLS or MPEG-TS with multiple programs)
+expose multiple programs or rendition groups. By default, mpv respects the
+format and groups tracks into editions, filtering the track list to only
+show tracks belonging to the currently selected edition.</p>
+<p class="last">Setting this option to <tt class="docutils literal">yes</tt> ignores the program structure of the file.
+No editions are created, and all tracks from all programs are shown as a
+flat list. Note that depending on the file, tracks from different programs
+may be completely unrelated to each other.</p>
+</dd>
+<dt><tt class="docutils literal"><span class="pre">--show-dependent-tracks=&lt;yes|no&gt;</span></tt></dt>
+<dd>Show dependent tracks in the track list (default: no). Dependent tracks
+carry coded data that is not independently decodable. For example, the
+tile sub-streams that make up a tiled HEIF image, the raw coded layers of
+an IAMF audio element, or the enhancement stream in an LCEVC group. They
+are hidden by default because exposing them would clutter the track list
+with entries that cannot be meaningfully selected on their own.</dd>
 <dt><tt class="docutils literal"><span class="pre">--track-auto-selection=&lt;yes|no&gt;</span></tt></dt>
 <dd><p class="first">Enable the default track auto-selection (default: yes). Enabling this will
 make the player select streams according to <tt class="docutils literal"><span class="pre">--aid</span></tt>, <tt class="docutils literal"><span class="pre">--alang</span></tt>, and
@@ -4761,13 +4778,12 @@ Enable/disable playback progress rendering in taskbar (Windows 7 and above).</p>
 <dt><tt class="docutils literal"><span class="pre">--snap-window</span></tt></dt>
 <dd>(Windows only) Snap the player window to screen edges.</dd>
 <dt><tt class="docutils literal"><span class="pre">--drag-and-drop=&lt;no|auto|replace|append|insert-next&gt;</span></tt></dt>
-<dd>Controls the default behavior of drag and drop on platforms that support
-this. <tt class="docutils literal">auto</tt> will obey what the underlying os/platform gives mpv.
-Typically, holding shift during the drag and drop will append the item to
-the playlist. Otherwise, it will completely replace it. <tt class="docutils literal">replace</tt>,
-<tt class="docutils literal">append</tt>, and <tt class="docutils literal"><span class="pre">insert-next</span></tt> always force replacing, appending to, and
-inserting next into the playlist respectively. <tt class="docutils literal">no</tt> disables all drag and
-drop behavior.</dd>
+<dd>Controls the default built-in drag-and-drop behavior
+(<tt class="docutils literal"><span class="pre">--input-builtin-drag-and-drop</span></tt>).
+<tt class="docutils literal">auto</tt> will obey the <tt class="docutils literal">action</tt> value in <tt class="docutils literal"><span class="pre">dropped-files</span></tt> property.
+<tt class="docutils literal">replace</tt>, <tt class="docutils literal">append</tt>, and <tt class="docutils literal"><span class="pre">insert-next</span></tt> always force replacing,
+appending to, and inserting next into the playlist respectively.
+<tt class="docutils literal">no</tt> disables all drag and drop behavior.</dd>
 <dt><tt class="docutils literal"><span class="pre">--ontop</span></tt></dt>
 <dd><p class="first">Makes the player window stay on top of other windows.</p>
 <p class="last">On Windows, if combined with fullscreen mode, this causes mpv to be
@@ -5674,6 +5690,9 @@ will not be not possible to enable them later. May be useful to libmpv clients.<
 disables the built-in dragging behavior. Note that unlike the <tt class="docutils literal"><span class="pre">window-dragging</span></tt>
 option, this option only affects VOs which support the <tt class="docutils literal"><span class="pre">begin-vo-dragging</span></tt>
 command, and does not disable window dragging initialized with the command.</dd>
+<dt><tt class="docutils literal"><span class="pre">--input-builtin-drag-and-drop=&lt;yes|no&gt;</span></tt></dt>
+<dd>Enable the built-in drag-and-drop behavior (default: yes). Setting it to no
+disables the built-in drag-and-drop handling.</dd>
 <dt><tt class="docutils literal"><span class="pre">--input-cmdlist</span></tt></dt>
 <dd>Prints all commands that can be bound to keys.</dd>
 <dt><tt class="docutils literal"><span class="pre">--input-commands=&lt;cmd1,cmd2,...&gt;</span></tt></dt>
@@ -14664,6 +14683,34 @@ MPV_FORMAT_NODE_MAP
        (key and string value for each pad-btn entry)
 </pre>
 </dd>
+<dt><tt class="docutils literal"><span class="pre">dropped-files</span></tt></dt>
+<dd><p class="first">Information of the most recent drag-and-drop event mpv received.
+A client can observe this property to detect when a drag-and-drop event
+happens. This property is unavailable if no drag-and-drop event has
+happened.</p>
+<p>Has the following sub-properties:</p>
+<dl class="docutils">
+<dt><tt class="docutils literal"><span class="pre">dropped-files/time</span></tt></dt>
+<dd>The timestamp of the last drag-and-drop event mpv received, in
+nanoseconds. This uses the same clock as <tt class="docutils literal">mpv_get_time_ns()</tt>.</dd>
+<dt><tt class="docutils literal"><span class="pre">dropped-files/action</span></tt></dt>
+<dd>The action of the drag-and-drop event. This is normally <tt class="docutils literal">replace</tt>.
+Depending on the platform, this can also be <tt class="docutils literal">append</tt> in some cases,
+such as shift key being held while files are dropped.</dd>
+<dt><tt class="docutils literal"><span class="pre">dropped-files/files</span></tt></dt>
+<dd>The dropped file names of the drag-and-drop event.</dd>
+</dl>
+<p>When querying the property with the client API using <tt class="docutils literal">MPV_FORMAT_NODE</tt>,
+or with Lua <tt class="docutils literal">mp.get_property_native</tt>, this will return a mpv_node with
+the following contents:</p>
+<pre class="last literal-block">
+MPV_FORMAT_NODE_MAP
+    &quot;time&quot;    MPV_FORMAT_INT64
+    &quot;action&quot;  MPV_FORMAT_STRING
+    &quot;files&quot;   MPV_FORMAT_NODE_ARRAY
+        MPV_FORMAT_STRING
+</pre>
+</dd>
 <dt><tt class="docutils literal"><span class="pre">sub-ass-extradata</span></tt></dt>
 <dd>The current ASS subtitle track's extradata. There is no formatting done.
 The extradata is returned as a string as-is. This property is not
@@ -14888,7 +14935,12 @@ cover art, <tt class="docutils literal">no</tt>/false or unavailable otherwise.<
 <dt><tt class="docutils literal"><span class="pre">track-list/N/hls-bitrate</span></tt></dt>
 <dd>The bitrate of the HLS stream, if available.</dd>
 <dt><tt class="docutils literal"><span class="pre">track-list/N/program-id</span></tt></dt>
-<dd>The program ID of the stream, if available.</dd>
+<dd>The first program ID this stream belongs to, if any. Deprecated,
+use <tt class="docutils literal"><span class="pre">track-list/N/program-ids</span></tt>.</dd>
+<dt><tt class="docutils literal"><span class="pre">track-list/N/program-ids</span></tt></dt>
+<dd>A list of all program IDs this stream belongs to. A stream can belong
+to more than one program (e.g. in MPEG-TS or HLS). Unavailable if the
+stream does not belong to any program.</dd>
 <dt><tt class="docutils literal"><span class="pre">track-list/N/codec</span></tt></dt>
 <dd>The codec name used by this track, for example <tt class="docutils literal">h264</tt>. Unavailable
 in some rare cases.</dd>
@@ -14986,6 +15038,7 @@ MPV_FORMAT_NODE_ARRAY
         &quot;hearing-impaired&quot;  MPV_FORMAT_FLAG
         &quot;hls-bitrate&quot;       MPV_FORMAT_INT64
         &quot;program-id&quot;        MPV_FORMAT_INT64
+        &quot;program-ids&quot;       MPV_FORMAT_NODE_ARRAY[MPV_FORMAT_INT64]
         &quot;selected&quot;          MPV_FORMAT_FLAG
         &quot;main-selection&quot;    MPV_FORMAT_INT64
         &quot;external&quot;          MPV_FORMAT_FLAG
