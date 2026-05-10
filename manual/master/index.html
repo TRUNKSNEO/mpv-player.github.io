@@ -1471,10 +1471,16 @@ player-operation-mode=pseudo-gui
 </pre>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last">Currently, you can extend the <tt class="docutils literal"><span class="pre">pseudo-gui</span></tt> profile in the config file the
-normal way. This is deprecated. In future mpv releases, the behavior might
-change, and not apply your additional settings, and/or use a different
-profile name.</p>
+<p>Currently, you can extend the <tt class="docutils literal"><span class="pre">pseudo-gui</span></tt> profile in the config file the
+normal way. This is deprecated and will be removed in future mpv releases.</p>
+<p>As an alternative, a conditional autoprofile can be used instead:</p>
+<blockquote class="last">
+<pre class="literal-block">
+[gui]
+profile-cond=p[&quot;player-operation-mode&quot;]==&quot;pseudo-gui&quot;
+idle=once
+</pre>
+</blockquote>
 </div>
 </div>
 <div class="section" id="options">
@@ -15668,6 +15674,10 @@ MPV_FORMAT_NODE_MAP
 <dt><tt class="docutils literal"><span class="pre">current-clipboard-backend</span></tt></dt>
 <dd>A string containing the currently active clipboard backend.
 See <tt class="docutils literal"><span class="pre">--clipboard-backends</span></tt> option for the list of available backends.</dd>
+<dt><tt class="docutils literal"><span class="pre">player-operation-mode</span></tt></dt>
+<dd>A read-only string of the current player operation mode, mirroring the
+<tt class="docutils literal"><span class="pre">--player-operation-mode</span></tt> option. To set operation mode, set the option
+at startup instead.</dd>
 <dt><tt class="docutils literal">clock</tt></dt>
 <dd>The current local time in hour:minutes format.</dd>
 </dl>
